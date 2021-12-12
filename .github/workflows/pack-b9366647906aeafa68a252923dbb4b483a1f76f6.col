@@ -1,0 +1,90 @@
+// RENK SENSÖRÜ
+
+#include <Wire.h>
+#include "Adafruit_TCS34725.h" // Kütüphane
+
+// #define LED 2 // Sensörün LED'i. Şâyet kapatılırsa sensör renkleri görmeyebilir.
+
+// Sensörü tanımla:
+Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_50MS, TCS34725_GAIN_4X);
+// TCS34725_INTEGRATIONTIME_50MS: 50ms entegrasyon süresi, 50ms'de bir ölçüm alır.
+// TCS34725_GAIN_4X: 4x kazanç, 4x daha hassas, 4x daha fazla ışık alır.
+
+void setup() {
+    Serial.begin(9600);
+
+    if (tcs.begin()) {
+        Serial.println("Found sensor");
+    } else {
+        Serial.println("No TCS34725 found, check connections");
+        while (1); // Boşla
+    }
+
+    // pinMode(LED, OUTPUT); 
+}
+
+const int TOLERANCE = 55; // Aşağıda kendini açıklayacak.
+
+String printColor(uint16_t r, uint16_t g, uint16_t b, uint16_t c) {
+    // Renklerin şiddetine göre tesmiye.
+    int mx = max(max(r, g), b); // En şiddetli değeri 100 kabûl et
+    r = map(r, 0, mx, 0, 100); // Ona göre diğer renkleri 0 - 100 tensîb
+    g = map(g, 0, mx, 0, 100);
+    b = map(b, 0, mx, 0, 100);
+
+    if (r > 100 - TOLERANCE && g < TOLERANCE && b < TOLERANCE) { // R yüksek, G ve B düşük
+        return "Red";
+    } else if (r < TOLERANCE && g > 100 - TOLERANCE && b < TOLERANCE) { // G yüksek, R ve B düşük
+        return "Green";
+    } else if (r < TOLERANCE && g < TOLERANCE && b > 100 - TOLERANCE) { // B yüksek, R ve G düşük
+        return "Blue";
+    } else if (r > 100 - TOLERANCE && g > 100 - TOLERANCE && b < TOLERANCE) { // R ve G yüksek, B düşük
+        return "Yellow";
+    } else if (r < TOLERANCE && g > 100 - TOLERANCE && b > 100 - TOLERANCE) { // G ve B yüksek, R düşük
+        return "Cyan";
+    } else if (r > 100 - TOLERANCE && g < TOLERANCE && b > 100 - TOLERANCE) { // R ve B yüksek, G düşük
+        return "Magenta";
+    } else if (r > 100 - TOLERANCE && g > 100 - TOLERANCE && b > 100 - TOLERANCE) { // R, G ve B yüksek
+        return "White";
+    } else if (r < TOLERANCE && g < TOLERANCE && b < TOLERANCE) { // R, G ve B düşük, bunun olması LED sebebiyle zor
+        return "Black";
+    } else { // Diğer durumlar
+        return "Unknown";
+    }
+}
+
+void loop() {
+    // digitalWrite(LED, HIGH); // Test aşamasında göz sağlığı için LOW yapılabilir.
+    uint16_t r, g, b, c, colorTemp, lux;
+    // r: Kırmızı
+    // g: Yeşil
+    // b: Mavi
+    // c: Temizlik (Clear)
+
+    tcs.getRawData(&r, &g, &b, &c); // Renkleri al
+    colorTemp = tcs.calculateColorTemperature(r, g, b); // Renk sıcaklığı
+    lux = tcs.calculateLux(r, g, b); // Lux (Işık şiddeti)
+
+    Serial.print("Color Temp: ");
+    Serial.print(colorTemp, DEC);
+    Serial.print(" K - ");
+    Serial.print("Lux: ");
+    Serial.print(lux, DEC);
+    Serial.print(" - ");
+    Serial.print("R: ");
+    Serial.print(r, DEC);
+    Serial.print(" ");
+    Serial.print("G: ");
+    Serial.print(g, DEC);
+    Serial.print(" ");
+    Serial.print("B: ");
+    Serial.print(b, DEC);
+    Serial.print(" ");
+    Serial.print("C: ");
+    Serial.print(c, DEC);
+    Serial.print(" ");
+    Serial.print("Color: ");
+    Serial.print(printColor(r, g, b, c));
+    Serial.println(" ");
+    delay(100);
+}
